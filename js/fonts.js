@@ -1,46 +1,48 @@
 /**
  * Adafruit GFX Font Metrics
- * Métricas EXACTAS de Adafruit_GFX.cpp replicadas pixel-perfect
+ * Métricas EXACTAS replicadas desde arduino-oled/pantalla.cpp línea 297:
+ * int alturaLinea = h + 2;  // pequeño espacio entre líneas
  * 
- * Basado directamente en:
- * - Adafruit_GFX.cpp línea 1493: cursor_x += textsize * 6;
- * - Adafruit_GFX.cpp línea 1494: cursor_y += textsize * 8;
- * - Sin espaciado extra entre líneas (lineHeight = height)
+ * Esto replica pixel-perfect el comportamiento del ESP8266
  */
 
 export const fontMetrics = {
   // Tamaño 1: 5 píxeles base, escala 1x = 6 ancho, 8 alto
   // Cálculo: width = 5 (char) + 1 (spacing) = 6
+  // Altura de línea: 8 + 2 (espaciado Arduino) = 10
   1: {
     width: 6,      // 5 píxeles caractér + 1 espaciado
     height: 8,     // Altura exacta del carácter
     charWidth: 5,
     baseline: 6,
-    lineHeight: 8  // SIN espaciado extra (igual a height)
+    lineHeight: 10 // 8 + 2 (como en Arduino pantalla.cpp:297)
   },
   // Tamaño 2: 5 píxeles base * 2 = 10, + 1 spacing * 2 = 2 → 12 ancho, 16 alto
+  // Altura de línea: 16 + 2 (espaciado Arduino) = 18
   2: {
     width: 12,     // (5 * 2) + (1 * 2) = 12
     height: 16,    // 8 * 2
     charWidth: 10,
     baseline: 12,
-    lineHeight: 16 // SIN espaciado extra (igual a height)
+    lineHeight: 18 // 16 + 2 (como en Arduino pantalla.cpp:297)
   },
   // Tamaño 3: 5 píxeles base * 3 = 15, + 1 spacing * 3 = 3 → 18 ancho, 24 alto
+  // Altura de línea: 24 + 2 (espaciado Arduino) = 26
   3: {
     width: 18,     // (5 * 3) + (1 * 3) = 18
     height: 24,    // 8 * 3
     charWidth: 15,
     baseline: 18,
-    lineHeight: 24 // SIN espaciado extra (igual a height)
+    lineHeight: 26 // 24 + 2 (como en Arduino pantalla.cpp:297)
   },
   // Tamaño 4: 5 píxeles base * 4 = 20, + 1 spacing * 4 = 4 → 24 ancho, 32 alto
+  // Altura de línea: 32 + 2 (espaciado Arduino) = 34
   4: {
     width: 24,     // (5 * 4) + (1 * 4) = 24
     height: 32,    // 8 * 4
     charWidth: 20,
     baseline: 24,
-    lineHeight: 32 // SIN espaciado extra (igual a height)
+    lineHeight: 34 // 32 + 2 (como en Arduino pantalla.cpp:297)
   }
 };
 
