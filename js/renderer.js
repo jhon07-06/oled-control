@@ -18,7 +18,7 @@ const ANCHO = 128;
 const ALTO = 64;
 const AMBAR = '#ffb000';
 const NEGRO = '#000000';
-const ESCALA_FUENTE = 1.5; // Aumentar tamaño de fuente para mejor visualización
+const ESCALA_FUENTE = 2.5; // Aumentar tamaño de fuente para mejor visualización
 
 /**
  * Dibuja la pantalla OLED completa basada en el estado actual
