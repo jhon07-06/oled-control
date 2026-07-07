@@ -18,6 +18,7 @@ const ANCHO = 128;
 const ALTO = 64;
 const AMBAR = '#ffb000';
 const NEGRO = '#000000';
+const ESCALA_FUENTE = 1.5; // Aumentar tamaño de fuente para mejor visualización
 
 /**
  * Dibuja la pantalla OLED completa basada en el estado actual
@@ -114,13 +115,14 @@ function dibujarLineas(ctx, lineas, tamano, alineacion, startY, colorFrente) {
 
 /**
  * Dibuja un texto en posición (x, y) con tamaño y color
- * Simula el comportamiento de Adafruit GFX
+ * Simula el comportamiento de Adafruit GFX con escala mejorada
  */
 function dibujarTexto(ctx, texto, tamano, x, y, color) {
   const metrics = fontMetrics[tamano];
   
-  // Establecer fuente monoespaciada que aproxime el comportamiento de Adafruit
-  const fontSize = metrics.height * 0.75; // ajuste empírico
+  // Establecer fuente monoespaciada con escala aumentada para mejor visualización
+  // ESCALA_FUENTE = 1.5 para que las letras ocupen más espacio visible
+  const fontSize = metrics.height * ESCALA_FUENTE;
   ctx.font = `bold ${fontSize}px 'Courier New', 'JetBrains Mono', monospace`;
   ctx.fillStyle = color;
   ctx.textAlign = 'left';
@@ -130,12 +132,12 @@ function dibujarTexto(ctx, texto, tamano, x, y, color) {
   let currentX = x;
   for (const char of texto) {
     if (char === ' ') {
-      currentX += metrics.width * 0.5;
+      currentX += metrics.width * 0.5 * ESCALA_FUENTE;
     } else if (char === '\t') {
-      currentX += metrics.width * 4;
+      currentX += metrics.width * 4 * ESCALA_FUENTE;
     } else {
       ctx.fillText(char, Math.round(currentX), Math.round(y));
-      currentX += metrics.width;
+      currentX += metrics.width * ESCALA_FUENTE;
     }
   }
 }
