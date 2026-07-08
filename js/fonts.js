@@ -1,87 +1,140 @@
 /**
- * Adafruit GFX Font Metrics
- * Métricas EXACTAS de Adafruit_GFX.cpp replicadas pixel-perfect
- * 
- * Basado directamente en:
- * - Adafruit_GFX.cpp línea 1493: cursor_x += textsize * 6;
- * - Adafruit_GFX.cpp línea 1494: cursor_y += textsize * 8;
- * - Sin espaciado extra entre líneas (lineHeight = height)
+ * Adafruit GFX Font - Fuente EXACTA (glcdfont.c)
+ *
+ * v2: la versión anterior de este archivo NO usaba el bitmap real
+ * de la OLED, sino una fuente del sistema ('Courier New') escalada
+ * con ESCALA_FUENTE + AJUSTE_VERTICAL para que "se pareciera" al
+ * resultado real. Eso nunca puede calzar pixel a pixel: una fuente
+ * vectorial no tiene la misma proporción ni densidad que una fuente
+ * bitmap de puntos.
+ *
+ * Esta versión usa la tabla de bits REAL de glcdfont.c (la que trae
+ * Adafruit_GFX y que tu pantalla.cpp usa por defecto al llamar
+ * display.setTextSize(tamano) sin display.setFont()). Cada glyph es
+ * una grilla de 5x7 puntos; no se "mide" texto, se dibuja bit a bit,
+ * así que el ancho/alto es un cálculo exacto, no una aproximación.
+ *
+ * Geometría (igual que Adafruit_GFX con tamaño = 1):
+ *   - 5 columnas de tinta + 1 columna de espacio entre letras  → avance X = 6
+ *   - 7 filas de tinta + 1 fila de espacio entre líneas        → avance Y = 8
+ *   - con textSize(N) todo se escala x N
+ *
+ * Importante sobre el margen inferior más grande que viste en la
+ * pantalla real: NO es un bug. Es así en el propio dispositivo: la
+ * fila 8 (de espaciado) es parte de la celda de cada línea pero no
+ * tiene tinta, así que cuando se centra un bloque de texto usando la
+ * altura completa de la celda (8*tamaño por línea, como hace
+ * Adafruit_GFX con el cursor), la última línea deja ese espacio de
+ * más abajo del todo. Acá se replica exactamente ese comportamiento.
  */
 
+// Tabla de 256 caracteres x 5 bytes (una columna por byte, bit 0 = fila superior).
+// Extraída de glcdfont.c (adafruit/Adafruit-GFX-Library, licencia BSD) -
+// es la MISMA tabla que compila tu firmware por defecto.
+export const TABLA_FUENTE = new Uint8Array([
+0,0,0,0,0,62,91,79,91,62,62,107,79,107,62,28,62,124,62,28,
+24,60,126,60,24,28,87,125,87,28,28,94,127,94,28,0,24,60,24,0,
+255,231,195,231,255,0,24,36,24,0,255,231,219,231,255,48,72,58,6,14,
+38,41,121,41,38,64,127,5,5,7,64,127,5,37,63,90,60,231,60,90,
+127,62,28,28,8,8,28,28,62,127,20,34,127,34,20,95,95,0,95,95,
+6,9,127,1,127,0,102,137,149,106,96,96,96,96,96,148,162,255,162,148,
+8,4,126,4,8,16,32,126,32,16,8,8,42,28,8,8,28,42,8,8,
+30,16,16,16,16,12,30,12,30,12,48,56,62,56,48,6,14,62,14,6,
+0,0,0,0,0,0,0,95,0,0,0,7,0,7,0,20,127,20,127,20,
+36,42,127,42,18,35,19,8,100,98,54,73,86,32,80,0,8,7,3,0,
+0,28,34,65,0,0,65,34,28,0,42,28,127,28,42,8,8,62,8,8,
+0,128,112,48,0,8,8,8,8,8,0,0,96,96,0,32,16,8,4,2,
+62,81,73,69,62,0,66,127,64,0,114,73,73,73,70,33,65,73,77,51,
+24,20,18,127,16,39,69,69,69,57,60,74,73,73,49,65,33,17,9,7,
+54,73,73,73,54,70,73,73,41,30,0,0,20,0,0,0,64,52,0,0,
+0,8,20,34,65,20,20,20,20,20,0,65,34,20,8,2,1,89,9,6,
+62,65,93,89,78,124,18,17,18,124,127,73,73,73,54,62,65,65,65,34,
+127,65,65,65,62,127,73,73,73,65,127,9,9,9,1,62,65,65,81,115,
+127,8,8,8,127,0,65,127,65,0,32,64,65,63,1,127,8,20,34,65,
+127,64,64,64,64,127,2,28,2,127,127,4,8,16,127,62,65,65,65,62,
+127,9,9,9,6,62,65,81,33,94,127,9,25,41,70,38,73,73,73,50,
+3,1,127,1,3,63,64,64,64,63,31,32,64,32,31,63,64,56,64,63,
+99,20,8,20,99,3,4,120,4,3,97,89,73,77,67,0,127,65,65,65,
+2,4,8,16,32,0,65,65,65,127,4,2,1,2,4,64,64,64,64,64,
+0,3,7,8,0,32,84,84,120,64,127,40,68,68,56,56,68,68,68,40,
+56,68,68,40,127,56,84,84,84,24,0,8,126,9,2,24,164,164,156,120,
+127,8,4,4,120,0,68,125,64,0,32,64,64,61,0,127,16,40,68,0,
+0,65,127,64,0,124,4,120,4,120,124,8,4,4,120,56,68,68,68,56,
+252,24,36,36,24,24,36,36,24,252,124,8,4,4,8,72,84,84,84,36,
+4,4,63,68,36,60,64,64,32,124,28,32,64,32,28,60,64,48,64,60,
+68,40,16,40,68,76,144,144,144,124,68,100,84,76,68,0,8,54,65,0,
+0,0,119,0,0,0,65,54,8,0,2,1,2,4,2,60,38,35,38,60,
+30,161,161,97,18,58,64,64,32,122,56,84,84,85,89,33,85,85,121,65,
+34,84,84,120,66,33,85,84,120,64,32,84,85,121,64,12,30,82,114,18,
+57,85,85,85,89,57,84,84,84,89,57,85,84,84,88,0,0,69,124,65,
+0,2,69,125,66,0,1,69,124,64,125,18,17,18,125,240,40,37,40,240,
+124,84,85,69,0,32,84,84,124,84,124,10,9,127,73,50,73,73,73,50,
+58,68,68,68,58,50,74,72,72,48,58,65,65,33,122,58,66,64,32,120,
+0,157,160,160,125,61,66,66,66,61,61,64,64,64,61,60,36,255,36,36,
+72,126,73,67,102,43,47,252,47,43,255,9,41,246,32,192,136,126,9,3,
+32,84,84,121,65,0,0,68,125,65,48,72,72,74,50,56,64,64,34,122,
+0,122,10,10,114,125,13,25,49,125,38,41,41,47,40,38,41,41,41,38,
+48,72,77,64,32,56,8,8,8,8,8,8,8,8,56,47,16,200,172,186,
+47,16,40,52,250,0,0,123,0,0,8,20,42,20,34,34,20,42,20,8,
+85,0,85,0,85,170,85,170,85,170,255,85,255,85,255,0,0,0,255,0,
+16,16,16,255,0,20,20,20,255,0,16,16,255,0,255,16,16,240,16,240,
+20,20,20,252,0,20,20,247,0,255,0,0,255,0,255,20,20,244,4,252,
+20,20,23,16,31,16,16,31,16,31,20,20,20,31,0,16,16,16,240,0,
+0,0,0,31,16,16,16,16,31,16,16,16,16,240,16,0,0,0,255,16,
+16,16,16,16,16,16,16,16,255,16,0,0,0,255,20,0,0,255,0,255,
+0,0,31,16,23,0,0,252,4,244,20,20,23,16,23,20,20,244,4,244,
+0,0,255,0,247,20,20,20,20,20,20,20,247,0,247,20,20,20,23,20,
+16,16,31,16,31,20,20,20,244,20,16,16,240,16,240,0,0,31,16,31,
+0,0,0,31,20,0,0,0,252,20,0,0,240,16,240,16,16,255,16,255,
+20,20,20,255,20,16,16,16,31,0,0,0,0,240,16,255,255,255,255,255,
+240,240,240,240,240,255,255,255,0,0,0,0,0,255,255,15,15,15,15,15,
+56,68,68,56,68,252,74,74,74,52,126,2,2,6,6,2,126,2,126,2,
+99,85,73,65,99,56,68,68,60,4,64,126,32,30,32,6,2,126,2,2,
+153,165,231,165,153,28,42,73,42,28,76,114,1,114,76,48,74,77,77,48,
+48,72,120,72,48,188,98,90,70,61,62,73,73,73,0,126,1,1,1,126,
+42,42,42,42,42,68,68,95,68,68,64,81,74,68,64,64,68,74,81,64,
+0,0,255,1,3,224,128,255,0,0,8,8,107,107,8,54,18,54,36,54,
+6,15,9,15,6,0,0,24,24,0,0,0,16,16,0,48,64,255,1,1,
+0,31,1,1,30,0,25,29,23,18,0,60,60,60,60,0,0,0,0,0]);
+
+const ANCHO_GLYPH = 5;   // columnas de tinta
+const ALTO_GLYPH = 7;    // filas de tinta
+const AVANCE_X = 6;      // ancho + 1 columna de espacio entre letras
+const AVANCE_Y = 8;      // alto + 1 fila de espacio entre líneas
+
+// Métricas por tamaño (se mantienen exportadas por compatibilidad,
+// varios módulos las usan para calcular layout sin volver a tocar HTML/CSS).
 export const fontMetrics = {
-  // Tamaño 1: 5 píxeles base, escala 1x = 6 ancho, 8 alto
-  // Cálculo: width = 5 (char) + 1 (spacing) = 6
-  1: {
-    width: 6,      // 5 píxeles caractér + 1 espaciado
-    height: 8,     // Altura exacta del carácter
-    charWidth: 5,
-    baseline: 6,
-    lineHeight: 8  // SIN espaciado extra (igual a height)
-  },
-  // Tamaño 2: 5 píxeles base * 2 = 10, + 1 spacing * 2 = 2 → 12 ancho, 16 alto
-  2: {
-    width: 12,     // (5 * 2) + (1 * 2) = 12
-    height: 16,    // 8 * 2
-    charWidth: 10,
-    baseline: 12,
-    lineHeight: 16 // SIN espaciado extra (igual a height)
-  },
-  // Tamaño 3: 5 píxeles base * 3 = 15, + 1 spacing * 3 = 3 → 18 ancho, 24 alto
-  3: {
-    width: 18,     // (5 * 3) + (1 * 3) = 18
-    height: 24,    // 8 * 3
-    charWidth: 15,
-    baseline: 18,
-    lineHeight: 24 // SIN espaciado extra (igual a height)
-  },
-  // Tamaño 4: 5 píxeles base * 4 = 20, + 1 spacing * 4 = 4 → 24 ancho, 32 alto
-  4: {
-    width: 24,     // (5 * 4) + (1 * 4) = 24
-    height: 32,    // 8 * 4
-    charWidth: 20,
-    baseline: 24,
-    lineHeight: 32 // SIN espaciado extra (igual a height)
-  }
+  1: { width: AVANCE_X * 1, height: AVANCE_Y * 1, charWidth: ANCHO_GLYPH * 1, lineHeight: AVANCE_Y * 1 },
+  2: { width: AVANCE_X * 2, height: AVANCE_Y * 2, charWidth: ANCHO_GLYPH * 2, lineHeight: AVANCE_Y * 2 },
+  3: { width: AVANCE_X * 3, height: AVANCE_Y * 3, charWidth: ANCHO_GLYPH * 3, lineHeight: AVANCE_Y * 3 },
+  4: { width: AVANCE_X * 4, height: AVANCE_Y * 4, charWidth: ANCHO_GLYPH * 4, lineHeight: AVANCE_Y * 4 }
 };
 
 /**
- * Calcula el ancho en píxeles de un texto en un tamaño dado
- * Usa métricas de Adafruit GFX para precisión
+ * Ancho en píxeles físicos que ocupa un texto a un tamaño dado.
+ * Igual al resultado de Adafruit_GFX::getTextBounds(): n caracteres
+ * a AVANCE_X*tamano px, menos la última columna de espacio (el
+ * bounding box real no incluye el espacio después del último caracter).
  */
 export function calcularAnchoTexto(texto, tamano) {
-  const metrics = fontMetrics[tamano];
-  if (!metrics) return 0;
-  
-  let ancho = 0;
-  for (let i = 0; i < texto.length; i++) {
-    const char = texto[i];
-    // Caracteres especiales o espacios: ancho reducido
-    if (char === ' ') {
-      ancho += metrics.width * 0.5; // espacios más estrechos
-    } else if (char === '\t') {
-      ancho += metrics.width * 4; // tab = 4 espacios
-    } else {
-      // Mayoría de caracteres: ancho estándar
-      ancho += metrics.width;
-    }
-  }
-  return ancho;
+  if (!texto.length) return 0;
+  return texto.length * AVANCE_X * tamano - tamano;
 }
 
 /**
- * Calcula la altura en píxeles de un bloque de texto
+ * Altura en píxeles de un bloque de N líneas.
+ * Usa la altura de CELDA completa (8*tamaño) por línea -- igual que
+ * el avance de cursor real de Adafruit_GFX -- no solo la tinta visible
+ * (7*tamaño). Por eso la última línea del bloque deja un renglón de
+ * más abajo del todo: así se ve también en la OLED física.
  */
 export function calcularAltoTexto(lineas, tamano) {
-  const metrics = fontMetrics[tamano];
-  if (!metrics || lineas.length === 0) return 0;
-  
-  return metrics.lineHeight * lineas.length;
+  if (!lineas || lineas.length === 0) return 0;
+  return AVANCE_Y * tamano * lineas.length;
 }
 
-/**
- * Divide un texto en líneas para que se ajuste al ancho de la OLED
- * Usa word-wrap: corta por palabras, no por caracteres
- */
+/** Divide un texto en líneas por palabra, igual que el word-wrap del firmware. */
 export function dividirEnLineas(texto, tamano, anchoMax = 128) {
   const palabras = texto.length ? texto.split(' ') : [''];
   const lineas = [];
@@ -91,10 +144,10 @@ export function dividirEnLineas(texto, tamano, anchoMax = 128) {
     const candidata = actual.length ? actual + ' ' + palabra : palabra;
     const ancho = calcularAnchoTexto(candidata, tamano);
 
-    if (ancho <= anchoMax) {
+    if (ancho <= anchoMax || actual.length === 0) {
       actual = candidata;
     } else {
-      if (actual.length > 0) lineas.push(actual);
+      lineas.push(actual);
       actual = palabra;
     }
   }
@@ -104,54 +157,61 @@ export function dividirEnLineas(texto, tamano, anchoMax = 128) {
   return lineas;
 }
 
-/**
- * Encuentra el tamaño más grande que permite ajustar el texto en el ancho
- * Usado para modo 'reducir'
- */
+/** Busca el tamaño más grande (1..tamanoMax) que entra en el ancho disponible. */
 export function calcularTamanoReducido(texto, tamanoMax, anchoMax = 128) {
   for (let t = tamanoMax; t >= 1; t--) {
-    if (calcularAnchoTexto(texto, t) <= anchoMax) {
-      return t;
-    }
+    if (calcularAnchoTexto(texto, t) <= anchoMax) return t;
   }
   return 1;
 }
 
-/**
- * Recorta un texto agregando "..." si excede el ancho
- * Usado para modo 'recortar'
- */
+/** Recorta el texto agregando "..." si no entra en el ancho disponible. */
 export function recortarTexto(texto, tamano, anchoMax = 128) {
-  if (calcularAnchoTexto(texto, tamano) <= anchoMax) {
-    return texto;
-  }
+  if (calcularAnchoTexto(texto, tamano) <= anchoMax) return texto;
 
   const sufijo = '...';
-  const anchoSufijo = calcularAnchoTexto(sufijo, tamano);
-  
   for (let len = texto.length - 1; len > 0; len--) {
     const candidata = texto.slice(0, len) + sufijo;
-    if (calcularAnchoTexto(candidata, tamano) <= anchoMax) {
-      return candidata;
-    }
+    if (calcularAnchoTexto(candidata, tamano) <= anchoMax) return candidata;
   }
-  
   return sufijo;
 }
 
-/**
- * Calcula la posición X para alinear un texto
- */
+/** Calcula la posición X según alineación (izquierda/centro/derecha). */
 export function calcularX(texto, tamano, alineacion, anchoMax = 128) {
   const w = calcularAnchoTexto(texto, tamano);
   let x = 0;
-  
-  if (alineacion === 'centro') {
-    x = (anchoMax - w) / 2;
-  } else if (alineacion === 'derecha') {
-    x = anchoMax - w;
-  }
-  // 'izquierda': x = 0 (por defecto)
-  
+  if (alineacion === 'centro') x = (anchoMax - w) / 2;
+  else if (alineacion === 'derecha') x = anchoMax - w;
   return Math.max(0, Math.round(x));
+}
+
+/**
+ * Dibuja texto en el canvas replicando el bitmap real, caracter por
+ * caracter, punto por punto. (x, y) es la esquina superior izquierda
+ * de la celda del primer caracter (no del glyph "recortado").
+ */
+export function dibujarTextoBitmap(ctx, texto, tamano, x, y, color) {
+  ctx.fillStyle = color;
+  let cx = x;
+  for (const ch of texto) {
+    let codigo = ch.codePointAt(0);
+    // La tabla clásica cubre 0-255; cualquier otro caracter (emoji, etc.)
+    // se dibuja como '?' para no romper el layout.
+    if (codigo > 255) codigo = 63;
+    dibujarCaracterBitmap(ctx, codigo, cx, y, tamano);
+    cx += AVANCE_X * tamano;
+  }
+}
+
+function dibujarCaracterBitmap(ctx, codigo, x, y, tamano) {
+  const offset = codigo * 5;
+  for (let col = 0; col < ANCHO_GLYPH; col++) {
+    const columna = TABLA_FUENTE[offset + col] || 0;
+    for (let fila = 0; fila < ALTO_GLYPH; fila++) {
+      if (columna & (1 << fila)) {
+        ctx.fillRect(x + col * tamano, y + fila * tamano, tamano, tamano);
+      }
+    }
+  }
 }
