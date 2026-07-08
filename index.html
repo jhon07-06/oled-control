@@ -14,7 +14,7 @@
 <div class="hoja">
 
   <header>
-    <p class="eyebrow">Panel de control · Firmware V1.5</p>
+    <p class="eyebrow">Panel de control · Firmware V1.6</p>
     <h1>OLED Remota</h1>
     <p class="subtitulo">Lo que ves acá es lo que se dibuja en la pantalla física. Ajustá, mirá el resultado y recién ahí enviá.</p>
   </header>
@@ -38,75 +38,112 @@
 
   <div class="controles">
 
+    <!-- Selector Tipo: Texto o Imagen -->
     <div class="campo">
-      <label class="rotulo" for="texto">Texto</label>
-      <textarea id="texto" maxlength="200" placeholder="Escribí el mensaje para la OLED…"></textarea>
-      <div class="contador"><span id="contador">0</span>/200</div>
-    </div>
-
-    <div class="fila-doble">
-      <fieldset>
-        <span class="rotulo">Tamaño</span>
-        <div class="segmento" id="grupoTamano">
-          <button type="button" data-valor="1">1</button>
-          <button type="button" data-valor="2">2</button>
-          <button type="button" data-valor="3">3</button>
-          <button type="button" data-valor="4">4</button>
-        </div>
-      </fieldset>
-
-      <fieldset>
-        <span class="rotulo">Alineación</span>
-        <div class="segmento" id="grupoAlineacion">
-          <button type="button" data-valor="izquierda">Izq.</button>
-          <button type="button" data-valor="centro">Centro</button>
-          <button type="button" data-valor="derecha">Der.</button>
-        </div>
-      </fieldset>
-    </div>
-
-    <div class="campo">
-      <span class="rotulo">Modo de texto</span>
-      <div class="modo-lista" id="grupoModo">
-        <label class="modo-opcion">
-          <input type="radio" name="modoTexto" value="ajustar" checked />
-          <span>
-            <span class="modo-nombre">ajustar</span>
-            <span class="modo-desc">Reparte el texto en varias líneas para que entre completo.</span>
-          </span>
-        </label>
-        <label class="modo-opcion">
-          <input type="radio" name="modoTexto" value="scroll" />
-          <span>
-            <span class="modo-nombre">scroll</span>
-            <span class="modo-desc">Una sola línea que se desliza de derecha a izquierda.</span>
-          </span>
-        </label>
-        <label class="modo-opcion">
-          <input type="radio" name="modoTexto" value="reducir" />
-          <span>
-            <span class="modo-nombre">reducir</span>
-            <span class="modo-desc">Achica la letra automáticamente hasta que el texto entre.</span>
-          </span>
-        </label>
-        <label class="modo-opcion">
-          <input type="radio" name="modoTexto" value="recortar" />
-          <span>
-            <span class="modo-nombre">recortar</span>
-            <span class="modo-desc">Corta el texto y agrega "…" si no entra.</span>
-          </span>
-        </label>
+      <span class="rotulo">Tipo de contenido</span>
+      <div class="segmento" id="grupoTipo">
+        <button type="button" data-valor="texto" class="activo">Texto</button>
+        <button type="button" data-valor="imagen">Imagen</button>
       </div>
     </div>
 
-    <div class="campo switch-fila">
-      <span class="rotulo" style="margin:0;">Invertido (fondo/texto)</span>
-      <label class="switch">
-        <input type="checkbox" id="invertido" />
-        <span class="via"><span class="perilla"></span></span>
-      </label>
+    <!-- Sección de TEXTO (mostrada por defecto) -->
+    <div id="seccionTexto">
+
+      <div class="campo">
+        <label class="rotulo" for="texto">Texto</label>
+        <textarea id="texto" maxlength="200" placeholder="Escribí el mensaje para la OLED…"></textarea>
+        <div class="contador"><span id="contador">0</span>/200</div>
+      </div>
+
+      <div class="fila-doble">
+        <fieldset>
+          <span class="rotulo">Tamaño</span>
+          <div class="segmento" id="grupoTamano">
+            <button type="button" data-valor="1">1</button>
+            <button type="button" data-valor="2">2</button>
+            <button type="button" data-valor="3">3</button>
+            <button type="button" data-valor="4">4</button>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <span class="rotulo">Alineación</span>
+          <div class="segmento" id="grupoAlineacion">
+            <button type="button" data-valor="izquierda">Izq.</button>
+            <button type="button" data-valor="centro">Centro</button>
+            <button type="button" data-valor="derecha">Der.</button>
+          </div>
+        </fieldset>
+      </div>
+
+      <div class="campo">
+        <span class="rotulo">Modo de texto</span>
+        <div class="modo-lista" id="grupoModo">
+          <label class="modo-opcion">
+            <input type="radio" name="modoTexto" value="ajustar" checked />
+            <span>
+              <span class="modo-nombre">ajustar</span>
+              <span class="modo-desc">Reparte el texto en varias líneas para que entre completo.</span>
+            </span>
+          </label>
+          <label class="modo-opcion">
+            <input type="radio" name="modoTexto" value="scroll" />
+            <span>
+              <span class="modo-nombre">scroll</span>
+              <span class="modo-desc">Una sola línea que se desliza de derecha a izquierda.</span>
+            </span>
+          </label>
+          <label class="modo-opcion">
+            <input type="radio" name="modoTexto" value="reducir" />
+            <span>
+              <span class="modo-nombre">reducir</span>
+              <span class="modo-desc">Achica la letra automáticamente hasta que el texto entre.</span>
+            </span>
+          </label>
+          <label class="modo-opcion">
+            <input type="radio" name="modoTexto" value="recortar" />
+            <span>
+              <span class="modo-nombre">recortar</span>
+              <span class="modo-desc">Corta el texto y agrega "…" si no entra.</span>
+            </span>
+          </label>
+        </div>
+      </div>
+
+      <div class="campo switch-fila">
+        <span class="rotulo" style="margin:0;">Invertido (fondo/texto)</span>
+        <label class="switch">
+          <input type="checkbox" id="invertido" />
+          <span class="via"><span class="perilla"></span></span>
+        </label>
+      </div>
+
     </div>
 
+    <!-- Sección de IMAGEN (oculta inicialmente) -->
+    <div id="seccionImagen" style="display: none;">
+
+      <div class="campo">
+        <label class="rotulo" for="cargadorImagen">Cargá una imagen</label>
+        <input type="file" id="cargadorImagen" accept="image/*" />
+        <p class="descripcion-campo">Formatos: JPG, PNG, GIF, WebP. Se redimensionará a 128×64 sin distorsión, con marcos negros si es necesario.</p>
+      </div>
+
+      <div class="campo">
+        <label class="rotulo" for="umbral">Umbral de binarización</label>
+        <div class="control-rango">
+          <input type="range" id="umbral" min="0" max="255" value="127" />
+          <span class="valor-rango" id="valorUmbral">127</span>
+        </div>
+        <p class="descripcion-campo">Ajustá la sensibilidad: 0 = todo blanco, 255 = todo negro. Valores altos = más detalles oscuros.</p>
+      </div>
+
+      <div id="avisoImagen" class="aviso" style="display: none;"></div>
+
+    </div>
+
+    <!-- Botón Enviar y Estado -->
     <button id="enviar" type="button">Enviar a la OLED</button>
     <div class="estado-linea" id="estadoLinea">
       <span class="led" id="ledEstado"></span>
