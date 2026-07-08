@@ -5,6 +5,7 @@
 
 import { dibujarOLED } from './renderer.js';
 import { cargarEstado, enviarEstado } from './firebase.js';
+import { procesarImagen } from './imageProcessor.js';
 import {
   obtenerElementos,
   poblarControles,
@@ -21,11 +22,15 @@ import { calcularAnchoTexto } from './fonts.js';
 // Estado Global
 // ===================================================
 let estadoActual = {
+  tipo: 'texto',
   texto: 'Hola Mundo',
   tamano: 2,
   alineacion: 'centro',
   invertido: false,
-  modoTexto: 'ajustar'
+  modoTexto: 'ajustar',
+  imagenData: '',
+  imagenAncho: 0,
+  imagenAlto: 0
 };
 
 let elementos = null;
@@ -68,6 +73,14 @@ function iniciarScroll() {
 }
 
 function renderizar() {
+  // Si es imagen, no animar
+  if (estadoActual.tipo === 'imagen') {
+    detenerScroll();
+    dibujarOLED(elementos.canvas, estadoActual);
+    return;
+  }
+
+  // Si es texto y modo scroll, animar
   if (estadoActual.modoTexto === 'scroll') {
     iniciarScroll();
   } else {
@@ -77,9 +90,59 @@ function renderizar() {
 }
 
 // ===================================================
+// Gestión de Tipo de Contenido
+// ===================================================
+function cambiarTipo(nuevoTipo) {
+  estadoActual.tipo = nuevoTipo;
+  marcarSegmentoActivo(elementos.grupoTipo, nuevoTipo);
+
+  if (nuevoTipo === 'texto') {
+    elementos.seccionTexto.style.display = 'block';
+    elementos.seccionImagen.style.display = 'none';
+  } else {
+    elementos.seccionTexto.style.display = 'none';
+    elementos.seccionImagen.style.display = 'block';
+  }
+
+  renderizar();
+}
+
+// ===================================================
+// Gestión de Imágenes
+// ===================================================
+async function procesarYMostrarImagen() {
+  const file = elementos.cargadorImagen.files[0];
+  if (!file) return;
+
+  try {
+    marcarEstado('Procesando imagen…', null, elementos);
+    
+    const umbral = parseInt(elementos.umbral.value);
+    const resultado = await procesarImagen(file, 128, 64, umbral);
+
+    estadoActual.imagenData = resultado.imagenData;
+    estadoActual.imagenAncho = resultado.imagenAncho;
+    estadoActual.imagenAlto = resultado.imagenAlto;
+
+    renderizar();
+    marcarEstado(`Imagen procesada: ${resultado.imagenAncho}×${resultado.imagenAlto}px`, 'ok', elementos);
+  } catch (error) {
+    console.error('Error procesando imagen:', error);
+    marcarEstado(`Error: ${error.message}`, 'error', elementos);
+  }
+}
+
+// ===================================================
 // Event Listeners de Controles
 // ===================================================
 function configurarEventos() {
+  // Selector de tipo
+  elementos.grupoTipo.addEventListener('click', (e) => {
+    const btn = e.target.closest('button');
+    if (!btn) return;
+    cambiarTipo(btn.dataset.valor);
+  });
+
   // Texto
   elementos.texto.addEventListener('input', () => {
     estadoActual.texto = elementos.texto.value;
@@ -118,6 +181,17 @@ function configurarEventos() {
     renderizar();
   });
 
+  // Cargador de imagen
+  elementos.cargadorImagen.addEventListener('change', procesarYMostrarImagen);
+
+  // Umbral de binarización
+  elementos.umbral.addEventListener('input', (e) => {
+    elementos.valorUmbral.textContent = e.target.value;
+    if (elementos.cargadorImagen.files.length > 0) {
+      procesarYMostrarImagen();
+    }
+  });
+
   // Enviar
   elementos.botonEnviar.addEventListener('click', enviarAFirebase);
 }
@@ -133,11 +207,15 @@ async function cargarEstadoInicial() {
       if (!resultado.vacio) {
         // Hay datos en Firebase
         estadoActual = {
+          tipo: resultado.tipo || 'texto',
           texto: resultado.texto,
           tamano: resultado.tamano,
           alineacion: resultado.alineacion,
           invertido: resultado.invertido,
-          modoTexto: resultado.modoTexto
+          modoTexto: resultado.modoTexto,
+          imagenData: resultado.imagenData || '',
+          imagenAncho: resultado.imagenAncho || 0,
+          imagenAlto: resultado.imagenAlto || 0
         };
       }
 

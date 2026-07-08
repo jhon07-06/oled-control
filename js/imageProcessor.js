@@ -1,0 +1,266 @@
+/**
+ * Image Processor para V1.6
+ * Maneja carga, redimensionamiento y conversión de imágenes a bitmap monocromático 1bpp
+ */
+
+/**
+ * Carga y redimensiona una imagen manteniendo la relación de aspecto
+ * sin distorsión. Agrega marcos negros si es necesario.
+ * 
+ * @param {File} file - Archivo de imagen
+ * @param {number} targetWidth - Ancho destino (128 para OLED)
+ * @param {number} targetHeight - Alto destino (64 para OLED)
+ * @returns {Promise<{canvas: HTMLCanvasElement, width: number, height: number}>}
+ */
+export async function cargarYRedimensionarImagen(file, targetWidth, targetHeight) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    
+    reader.onload = (e) => {
+      const img = new Image();
+      
+      img.onload = () => {
+        // Calcular escala manteniendo aspecto
+        const ratioImagen = img.width / img.height;
+        const ratioDestino = targetWidth / targetHeight;
+        
+        let newWidth, newHeight;
+        
+        if (ratioImagen > ratioDestino) {
+          // Imagen más ancha: ajustar por ancho
+          newWidth = targetWidth;
+          newHeight = Math.round(targetWidth / ratioImagen);
+        } else {
+          // Imagen más alta: ajustar por alto
+          newHeight = targetHeight;
+          newWidth = Math.round(targetHeight * ratioImagen);
+        }
+        
+        // Calcular posición para centrar
+        const offsetX = Math.round((targetWidth - newWidth) / 2);
+        const offsetY = Math.round((targetHeight - newHeight) / 2);
+        
+        // Crear canvas con fondo negro
+        const canvas = document.createElement('canvas');
+        canvas.width = targetWidth;
+        canvas.height = targetHeight;
+        
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        
+        // Fondo negro
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(0, 0, targetWidth, targetHeight);
+        
+        // Dibujar imagen redimensionada y centrada
+        ctx.drawImage(img, offsetX, offsetY, newWidth, newHeight);
+        
+        resolve({
+          canvas: canvas,
+          width: targetWidth,
+          height: targetHeight,
+          offsetX: offsetX,
+          offsetY: offsetY,
+          scaleWidth: newWidth,
+          scaleHeight: newHeight
+        });
+      };
+      
+      img.onerror = () => {
+        reject(new Error('Error al cargar la imagen'));
+      };
+      
+      img.src = e.target.result;
+    };
+    
+    reader.onerror = () => {
+      reject(new Error('Error al leer el archivo'));
+    };
+    
+    reader.readAsDataURL(file);
+  });
+}
+
+/**
+ * Convierte una imagen (canvas) a escala de grises
+ * @param {HTMLCanvasElement} canvas
+ * @returns {HTMLCanvasElement} Canvas con la imagen en escala de grises
+ */
+function convertirAEscalaGrises(canvas) {
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const data = imageData.data;
+  
+  for (let i = 0; i < data.length; i += 4) {
+    const r = data[i];
+    const g = data[i + 1];
+    const b = data[i + 2];
+    
+    // Luminancia relativa (ITU-R BT.709)
+    const gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
+    
+    data[i] = gray;
+    data[i + 1] = gray;
+    data[i + 2] = gray;
+  }
+  
+  ctx.putImageData(imageData, 0, 0);
+  return canvas;
+}
+
+/**
+ * Convierte una imagen en escala de grises a bitmap monocromático (1 bpp)
+ * Usa umbralización simple: pixeles > umbral = blanco (1), <= umbral = negro (0)
+ * 
+ * @param {HTMLCanvasElement} canvas - Canvas con imagen en escala de grises
+ * @param {number} umbral - Valor de umbral (0-255, default 127)
+ * @returns {{bitmap: Uint8Array, width: number, height: number}}
+ */
+function convertirAMonocromatico(canvas, umbral = 127) {
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const data = imageData.data;
+  
+  const width = canvas.width;
+  const height = canvas.height;
+  
+  // Calcular bytes necesarios: (ancho + 7) / 8 * alto
+  const bytesPorFila = Math.ceil(width / 8);
+  const bitmap = new Uint8Array(bytesPorFila * height);
+  
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const pixelIndex = (y * width + x) * 4;
+      const grayValue = data[pixelIndex]; // Ya está en escala de grises (R=G=B)
+      
+      // Determinar si el pixel es blanco o negro
+      const bit = grayValue > umbral ? 1 : 0;
+      
+      // Calcular posición en el bitmap
+      const byteIndex = y * bytesPorFila + Math.floor(x / 8);
+      const bitPosition = 7 - (x % 8); // MSB primero (como Adafruit_GFX)
+      
+      if (bit) {
+        bitmap[byteIndex] |= (1 << bitPosition);
+      }
+    }
+  }
+  
+  return { bitmap, width, height };
+}
+
+/**
+ * Codifica un array de bytes en Base64
+ * @param {Uint8Array} data
+ * @returns {string} Cadena Base64
+ */
+function codificarBase64(data) {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+  let result = '';
+  
+  for (let i = 0; i < data.length; i += 3) {
+    const a = data[i];
+    const b = i + 1 < data.length ? data[i + 1] : 0;
+    const c = i + 2 < data.length ? data[i + 2] : 0;
+    
+    const bitmap = (a << 16) | (b << 8) | c;
+    
+    result += chars[(bitmap >> 18) & 63];
+    result += chars[(bitmap >> 12) & 63];
+    result += chars[(bitmap >> 6) & 63];
+    result += chars[bitmap & 63];
+  }
+  
+  // Ajustar padding
+  if (data.length % 3 === 1) {
+    result = result.slice(0, -2) + '==';
+  } else if (data.length % 3 === 2) {
+    result = result.slice(0, -1) + '=';
+  }
+  
+  return result;
+}
+
+/**
+ * Procesa una imagen: redimensiona, convierte a monocromático y codifica en Base64
+ * 
+ * @param {File} file - Archivo de imagen cargado
+ * @param {number} targetWidth - Ancho destino (128)
+ * @param {number} targetHeight - Alto destino (64)
+ * @param {number} umbral - Umbral de binarización (0-255)
+ * @returns {Promise<{imagenData: string, imagenAncho: number, imagenAlto: number, canvas: HTMLCanvasElement}>}
+ */
+export async function procesarImagen(file, targetWidth = 128, targetHeight = 64, umbral = 127) {
+  try {
+    // 1. Cargar y redimensionar
+    const { canvas: canvasRedim } = await cargarYRedimensionarImagen(
+      file,
+      targetWidth,
+      targetHeight
+    );
+    
+    // 2. Convertir a escala de grises
+    const canvasGris = convertirAEscalaGrises(canvasRedim);
+    
+    // 3. Convertir a monocromático
+    const { bitmap, width, height } = convertirAMonocromatico(canvasGris, umbral);
+    
+    // 4. Codificar en Base64
+    const imagenData = codificarBase64(bitmap);
+    
+    return {
+      imagenData,
+      imagenAncho: width,
+      imagenAlto: height,
+      canvas: canvasRedim // Devolver el canvas redimensionado para preview
+    };
+  } catch (error) {
+    console.error('Error al procesar imagen:', error);
+    throw error;
+  }
+}
+
+/**
+ * Dibuja un preview de la imagen procesada en un canvas
+ * @param {HTMLCanvasElement} canvas - Canvas destino
+ * @param {string} base64Data - Datos de imagen en Base64
+ * @param {number} width - Ancho de la imagen
+ * @param {number} height - Alto de la imagen
+ */
+export function dibujarPreviewImagen(canvas, base64Data, width, height) {
+  // Decodificar Base64 a bytes
+  const binaryString = atob(base64Data);
+  const bitmap = new Uint8Array(binaryString.length);
+  
+  for (let i = 0; i < binaryString.length; i++) {
+    bitmap[i] = binaryString.charCodeAt(i);
+  }
+  
+  // Configurar canvas
+  canvas.width = width;
+  canvas.height = height;
+  
+  const ctx = canvas.getContext('2d');
+  const imageData = ctx.createImageData(width, height);
+  const data = imageData.data;
+  
+  // Reconstruir imagen desde bitmap
+  const bytesPorFila = Math.ceil(width / 8);
+  
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const byteIndex = y * bytesPorFila + Math.floor(x / 8);
+      const bitPosition = 7 - (x % 8);
+      
+      const bit = (bitmap[byteIndex] >> bitPosition) & 1;
+      const color = bit ? 255 : 0;
+      
+      const pixelIndex = (y * width + x) * 4;
+      data[pixelIndex] = color;     // R
+      data[pixelIndex + 1] = color; // G
+      data[pixelIndex + 2] = color; // B
+      data[pixelIndex + 3] = 255;   // A
+    }
+  }
+  
+  ctx.putImageData(imageData, 0, 0);
+}
